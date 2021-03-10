@@ -34,7 +34,7 @@ def fp_tree(transations, freqs: dict, min_sup=0.4):
     table = {item: SimpleNamespace(freq=freq, node=None) 
                 for item, freq in freqs.items() if freq/total >= min_sup}
 
-    if(len(table) == 0):
+    if len(table) == 0:
         return None, None
     #print(filter_l1)
     fp_tree = Node('{}', 1, None)
@@ -58,26 +58,26 @@ def fp_tree(transations, freqs: dict, min_sup=0.4):
 def freq_item_sets(table, prevs: set, freq_sets, min_sup=0.4):
     sorted_table = dict(sorted(table.items(), key=lambda item: item[1].freq))
     for item in sorted_table:
-        freq_items = prevs.copy()
+        freq_items = set(prevs)
         freq_items.add(item)
         freq_sets.append(freq_items)
         conditional_trans, freqs = conditionals(item, table)
-        cond_tree, cond_table = fp_tree(conditional_trans, freqs) 
+        __, cond_table = fp_tree(conditional_trans, freqs, min_sup) 
         if cond_table:
-            freq_item_sets(cond_table, freq_items, freq_sets)
+            freq_item_sets(cond_table, freq_items, freq_sets, min_sup)
 
-def _ascend_tree(node, prevs):
+def _build_prevs(node, prevs):
     if node.parent:
         prevs.append(node.name)
-        _ascend_tree(node.parent, prevs)
+        _build_prevs(node.parent, prevs)
 
 def conditionals(item, table):
     node = table[item].node 
     transaction = []
     freqs = {}
-    while node != None:
+    while node:
         prev_paths = []
-        _ascend_tree(node, prev_paths)  
+        _build_prevs(node, prev_paths)  
         if len(prev_paths) > 1:
             transaction.append(prev_paths[1:])
             freqs[node.name] = node.freq
@@ -102,9 +102,8 @@ def association_rules(transactions, freqs: dict, freq_sets: set, min_conf=0.6):
     Rule = namedtuple("Rule", ['A', 'B', 'conf'])
     rules = []
     for item_set in freq_sets:
-        subsets = powerset(item_set)
         sup = support(item_set, transactions)
-        for ss in subsets:
+        for ss in powerset(item_set):
             conf = float(sup / support(ss, transactions))
             if conf >= min_conf:
                 rules.append(Rule(ss, set(item_set.difference(ss)), conf))
